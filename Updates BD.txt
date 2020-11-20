@@ -1,0 +1,86 @@
+-- Atualiza as emoções principais dos livros do GoodReads
+
+UPDATE livro liv
+	SET top1_emocao = (
+		SELECT top1_emocao 
+			from analise ana
+				WHERE liv.id_livro = ana.id_livro
+				AND   ana.plataforma = 'goodreads'
+	)
+	WHERE liv.plataforma = 'goodreads'
+	AND   liv.top1_emocao IS NULL
+	
+UPDATE livro liv
+	SET top2_emocao = (
+		SELECT top2_emocao 
+			from analise ana
+				WHERE liv.id_livro = ana.id_livro
+				AND   ana.plataforma = 'goodreads'
+	)
+	WHERE liv.plataforma = 'goodreads'
+	AND   liv.top2_emocao IS NULL
+
+-- Atualiza a tabela Auxiliar Gutenberg
+
+TRUNCATE TABLE auxiliar_gutenberg 
+insert into auxiliar_gutenberg (id_livro, qtde_top1_emocao ) 
+SELECT id_livro,  max(qtde) as qtde FROM (
+SELECT id_livro, top1_emocao, count(1) AS qtde
+	FROM analise
+		where plataforma = 'gutenberg'
+			GROUP BY id_livro, top1_emocao ) resultado
+				GROUP BY id_livro 
+
+
+UPDATE auxiliar_gutenberg auxiliar
+	SET qtde_top2_emocao = (
+		SELECT qtde FROM (
+			SELECT id_livro,  max(qtde) as qtde FROM (
+				SELECT id_livro, top2_emocao, count(1) AS qtde
+					FROM analise
+						where plataforma = 'gutenberg'
+							GROUP BY id_livro, top2_emocao ) resultado
+								GROUP BY id_livro 
+								) ana 
+								WHERE auxiliar.id_livro = ana.id_livro
+							)
+
+
+
+-- Atualiza as emoções principais dos livros do Gutenberg
+
+UPDATE livro liv
+	SET top1_emocao = (
+		SELECT top1_emocao FROM (
+			SELECT resultado.id_livro, resultado.top1_emocao FROM (				 
+				SELECT id_livro, top1_emocao, count(1) AS qtde
+					FROM analise
+						WHERE plataforma = 'gutenberg'
+							GROUP BY id_livro, top1_emocao	) resultado	
+								INNER JOIN auxiliar_gutenberg auxiliar	
+									on resultado.id_livro = auxiliar.id_livro 
+									and resultado.qtde = auxiliar.qtde_top1_emocao
+									) ana
+				WHERE liv.id_livro = ana.id_livro				
+	)
+	WHERE liv.plataforma = 'gutenberg'
+	AND   liv.top1_emocao IS NULL
+	
+
+
+UPDATE livro liv
+	SET top2_emocao = (
+		SELECT top2_emocao FROM (
+			SELECT resultado.id_livro, resultado.top2_emocao FROM (				 
+				SELECT id_livro, top2_emocao, count(1) AS qtde
+					FROM analise
+						WHERE plataforma = 'gutenberg'
+							GROUP BY id_livro, top2_emocao	) resultado	
+								INNER JOIN auxiliar_gutenberg auxiliar	
+									on resultado.id_livro = auxiliar.id_livro 
+									and resultado.qtde = auxiliar.qtde_top2_emocao
+									) ana
+				WHERE liv.id_livro = ana.id_livro				
+	)
+	WHERE liv.plataforma = 'gutenberg'
+	AND   liv.top2_emocao IS NULL	

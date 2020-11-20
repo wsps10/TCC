@@ -1,0 +1,5 @@
+---
+applications:
+ - name: MySQL
+   random-route: true
+   memory: 64M
